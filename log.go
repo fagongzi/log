@@ -10,6 +10,26 @@ import (
 	"time"
 )
 
+// Logger logger interface
+type Logger interface {
+	FatalEnabled() bool
+	ErrorEnabled() bool
+	WarnEnabled() bool
+	InfoEnabled() bool
+	DebugEnabled() bool
+
+	Info(v ...interface{})
+	Infof(format string, v ...interface{})
+	Debug(v ...interface{})
+	Debugf(format string, v ...interface{})
+	Warning(v ...interface{})
+	Warningf(format string, v ...interface{})
+	Error(v ...interface{})
+	Errorf(format string, v ...interface{})
+	Fatal(v ...interface{})
+	Fatalf(format string, v ...interface{})
+}
+
 const (
 	// Ldate flags
 	Ldate = log.Ldate
@@ -67,11 +87,6 @@ var defaultLog = new()
 func init() {
 	SetFlags(Ldate | Ltime | Lmicroseconds | Lmicroseconds)
 	SetHighlighting(runtime.GOOS != "windows")
-}
-
-// Logger get default Logger
-func Logger() *log.Logger {
-	return defaultLog._log
 }
 
 // FatalEnabled fatal enabled
@@ -142,16 +157,6 @@ func Debug(v ...interface{}) {
 // Debugf debugf
 func Debugf(format string, v ...interface{}) {
 	defaultLog.Debugf(format, v...)
-}
-
-// Warn warn
-func Warn(v ...interface{}) {
-	defaultLog.Warning(v...)
-}
-
-// Warnf warnf
-func Warnf(format string, v ...interface{}) {
-	defaultLog.Warningf(format, v...)
 }
 
 // Warning warning
@@ -304,6 +309,10 @@ func (l *logger) SetOutputByName(path string) error {
 }
 
 func (l *logger) log(t Type, v ...interface{}) {
+	l.logWithPrefix(t, "", v...)
+}
+
+func (l *logger) logWithPrefix(t Type, prefix string, v ...interface{}) {
 	if l.level|Level(t) != l.level {
 		return
 	}
@@ -317,11 +326,21 @@ func (l *logger) log(t Type, v ...interface{}) {
 	v1 := make([]interface{}, len(v)+2)
 	logStr, logColor := logTypeToString(t)
 	if l.highlighting {
-		v1[0] = "\033" + logColor + "m[" + logStr + "]"
+		if prefix == "" {
+			v1[0] = "\033" + logColor + "m[" + logStr + "]"
+		} else {
+			v1[0] = "\033" + logColor + "m[" + logStr + "] " + prefix + ":"
+		}
+
 		copy(v1[1:], v)
 		v1[len(v)+1] = "\033[0m"
 	} else {
-		v1[0] = "[" + logStr + "]"
+		if prefix == "" {
+			v1[0] = "[" + logStr + "]"
+		} else {
+			v1[0] = "[" + logStr + "] " + prefix + ":"
+		}
+
 		copy(v1[1:], v)
 		v1[len(v)+1] = ""
 	}
@@ -331,6 +350,10 @@ func (l *logger) log(t Type, v ...interface{}) {
 }
 
 func (l *logger) logf(t Type, format string, v ...interface{}) {
+	l.logfWithPrefix(t, format, "", v...)
+}
+
+func (l *logger) logfWithPrefix(t Type, format string, prefix string, v ...interface{}) {
 	if l.level|Level(t) != l.level {
 		return
 	}
@@ -344,9 +367,17 @@ func (l *logger) logf(t Type, format string, v ...interface{}) {
 	logStr, logColor := logTypeToString(t)
 	var s string
 	if l.highlighting {
-		s = "\033" + logColor + "m[" + logStr + "] " + fmt.Sprintf(format, v...) + "\033[0m"
+		if prefix == "" {
+			s = "\033" + logColor + "m[" + logStr + "] " + fmt.Sprintf(format, v...) + "\033[0m"
+		} else {
+			s = "\033" + logColor + "m[" + logStr + "] " + prefix + ": " + fmt.Sprintf(format, v...) + "\033[0m"
+		}
 	} else {
-		s = "[" + logStr + "] " + fmt.Sprintf(format, v...)
+		if prefix == "" {
+			s = "[" + logStr + "] " + fmt.Sprintf(format, v...)
+		} else {
+			s = "[" + logStr + "] " + prefix + ": " + fmt.Sprintf(format, v...)
+		}
 	}
 	l._log.Output(4, s)
 }
