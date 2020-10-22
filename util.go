@@ -9,6 +9,7 @@ var (
 	logFile     = flag.String("log-file", "", "The external log file. Default log to console.")
 	logLevel    = flag.String("log-level", "info", "The log level, default is info")
 	logRotateBy = flag.String("log-rotate-by", "day", "The log rotate by [day|hour], default is day")
+	logCount    = flag.Int("log-count", 10, "Count of log files, default is 10")
 	logHigh     = flag.Bool("log-high", false, "The log highlighting")
 )
 

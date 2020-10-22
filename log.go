@@ -3,9 +3,12 @@ package log
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"runtime"
+	"sort"
 	"sync"
 	"time"
 )
@@ -209,6 +212,11 @@ func SetRotateByHour() {
 	defaultLog.SetRotateByHour()
 }
 
+// SetLogCount set log count
+func SetLogCount(value int) {
+	defaultLog.SetLogCount(value)
+}
+
 type logger struct {
 	_log         *log.Logger
 	level        Level
@@ -216,6 +224,8 @@ type logger struct {
 
 	dailyRolling bool
 	hourRolling  bool
+
+	logCount int
 
 	fileName  string
 	logSuffix string
@@ -234,6 +244,10 @@ func (l *logger) SetLevel(level Level) {
 
 func (l *logger) SetLevelByString(level string) {
 	l.level = stringToLogLevel(level)
+}
+
+func (l *logger) SetLogCount(value int) {
+	l.logCount = value
 }
 
 func (l *logger) SetRotateByDay() {
@@ -287,6 +301,31 @@ func (l *logger) doRotate(suffix string) error {
 
 	l.logSuffix = suffix
 
+	return l.removeLogs()
+}
+
+func (l *logger) removeLogs() error {
+	dir := path.Dir(l.fileName)
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	n := len(files) - l.logCount
+	if n <= 0 {
+		return nil
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].ModTime().Before(files[j].ModTime())
+	})
+
+	for i := 0; i < n; i++ {
+		err = os.Remove(path.Join(dir, files[i].Name()))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
