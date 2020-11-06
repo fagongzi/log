@@ -9,6 +9,7 @@ import (
 	"path"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -311,17 +312,28 @@ func (l *logger) removeLogs() error {
 		return err
 	}
 
-	n := len(files) - l.logCount
+	var logFiles []os.FileInfo
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), l.fileName) {
+			logFiles = append(logFiles, file)
+		}
+	}
+
+	if l.logCount == 0 {
+		l.logCount = 10
+	}
+
+	n := len(logFiles) - l.logCount
 	if n <= 0 {
 		return nil
 	}
 
-	sort.Slice(files, func(i, j int) bool {
-		return files[i].ModTime().Before(files[j].ModTime())
+	sort.Slice(logFiles, func(i, j int) bool {
+		return logFiles[i].ModTime().Before(logFiles[j].ModTime())
 	})
 
 	for i := 0; i < n; i++ {
-		err = os.Remove(path.Join(dir, files[i].Name()))
+		err = os.Remove(path.Join(dir, logFiles[i].Name()))
 		if err != nil {
 			return err
 		}

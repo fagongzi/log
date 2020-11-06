@@ -25,6 +25,7 @@ func InitLog() {
 		flag.Parse()
 	}
 
+	SetLogCount(*logCount)
 	SetHighlighting(*logHigh)
 	SetLevelByString(*logLevel)
 	if "" != *logFile {
